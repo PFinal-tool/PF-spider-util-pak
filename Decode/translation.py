@@ -8,6 +8,7 @@ import base64
 import hashlib
 import zlib
 
+from Cryptodome.Cipher import AES
 from prettytable import PrettyTable
 from termcolor import colored
 
@@ -15,9 +16,9 @@ from termcolor import colored
 class Encode:
     """常用的加密"""
 
-    def __init__(self, content, key="test"):
+    def __init__(self, content, **other):
         self._content = content
-        self._key = key
+        self._other = other
         self._encode = [
             "md5",
             "base64",
@@ -27,13 +28,21 @@ class Encode:
         ]
 
     def main(self):
+
         """加密主函数"""
         table = PrettyTable()
-        # 设置列名
-        table.field_names = ["加密方式", "加密结果"]
-        for encode in self._encode:
-            value = eval("self._encode_{}()".format(encode))  # 字符串转函数运行
-            table.add_row([encode, value])
+        if self._other is not None:
+            print(self._other)
+            # 设置列名
+            table.field_names = ["加密方式", "加密结果", "其他参数"]
+            value = eval("self._encode_{}()".format(self._other['action']))
+            table.add_row([self._other['action'], value, str(self._other)])
+        else:
+            # 设置列名
+            table.field_names = ["加密方式", "加密结果"]
+            for encode in self._encode:
+                value = eval("self._encode_{}()".format(encode))  # 字符串转函数运行
+                table.add_row([encode, value])
 
         print(colored(table, 'green'))
 
@@ -69,8 +78,22 @@ class Encode:
         """zlib encode"""
         return zlib.compress(self._content.encode('utf8'))
 
+    def _encode_aes(self):
+        """aes encode"""
+        aes = AES.new(self._add_to_16(self._other['secret_key']), AES.MODE_CBC, self._add_to_16(self._other['iv']))
+        encrypt_aes = aes.encrypt(self._add_to_16(self._content))
+        encrypt_text = str(base64.encodebytes(encrypt_aes), encoding='utf-8')  # 执行加密并转码 返回
+        # print(encrypt_text)
+        return encrypt_text
 
-class Decode():
+    def _add_to_16(self, value):
+        """Add a value to"""
+        while len(value) % 16 != 0:
+            value += '\0'
+        return str.encode(value)
+
+
+class Decode:
     """Decode"""
 
     def __init__(self, content, key="test"):
@@ -98,15 +121,24 @@ class Decode():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='爬虫小工具--加解密')
-    parser.add_argument('-e', '--encode', action='store_true', help='常用的加密')
-    parser.add_argument('-d', '--decode', action='store_true', help='常用的解密')
+    # 添加参数
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-e', '--encode', nargs='?', help='常用的加密', default=['def'], required=False)
+
+    group.add_argument('-d', '--decode', action='store_true', help='常用的解密')
     args = parser.parse_args()
+    # print(args)
     # 打印结果
-    # 处理选项
-    if args.encode:
+    if args.encode is None:
         # _key = input(colored("请输入加密的key:", 'green'))
         _content = input(colored("请输入要加密的字符串:", 'green'))
         ts = Encode(_content)
+        ts.main()
+    elif args.encode == 'aes':
+        _key = input(colored("初始化密钥:", 'green'))
+        _iv = input(colored("初始化向量:", 'green'))
+        _content = input(colored("请输入要加密的字符串:", 'green'))
+        ts = Encode(_content, secret_key=_key, action='aes', iv=_iv)
         ts.main()
 
     if args.decode:
