@@ -6,11 +6,10 @@
 import argparse
 import base64
 import hashlib
+import zlib
 
 from prettytable import PrettyTable
 from termcolor import colored
-
-COLOR = {'red': 1, 'green': 2, 'yellow': 3, 'blue': 4}
 
 
 class Encode:
@@ -24,6 +23,7 @@ class Encode:
             "base64",
             "sha1",
             "sha256",
+            "zlib"
         ]
 
     def main(self):
@@ -65,6 +65,36 @@ class Encode:
         sha512.update(self._content.encode('utf8'))
         return sha512.hexdigest()
 
+    def _encode_zlib(self):
+        """zlib encode"""
+        return zlib.compress(self._content.encode('utf8'))
+
+
+class Decode():
+    """Decode"""
+
+    def __init__(self, content, key="test"):
+        self._content = content
+        self._key = key
+        self._decode = [
+            "base64",
+            "zlib"
+        ]
+
+    def main(self):
+        """解码"""
+        for decode in self._decode:
+            try:
+                result = eval("self._decode_{}()".format(decode))  # 字符串转函数运行
+                print(colored(f"解码方式:{decode}，解码结果:{result}", 'green'))
+                break
+            except Exception:
+                print(colored(f'【{decode}】解码失败，换一种 >>>', 'red'))
+                continue
+
+    def _decode_base64(self):
+        return str(base64.b64decode(self._content.encode('utf8')), encoding='utf-8')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='爬虫小工具--加解密')
@@ -77,4 +107,9 @@ if __name__ == '__main__':
         # _key = input(colored("请输入加密的key:", 'green'))
         _content = input(colored("请输入要加密的字符串:", 'green'))
         ts = Encode(_content)
+        ts.main()
+
+    if args.decode:
+        _content = input(colored("请输入要解密密的字符串:", 'green'))
+        ts = Decode(_content)
         ts.main()
